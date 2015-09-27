@@ -1,0 +1,151 @@
+#!/bin/bash
+#prepare a string for output to a log
+out_string=""
+
+#get the current date and date of the last wakeup
+#last_wake file is touched by a user script in /etc/pm/sleep.d
+current_date=`date +%s`
+last_wake=`date +%s -r /var/log/pm-suspend.log`
+#calculate the difference in time of last wake to now
+diff_time=$(($current_date-$last_wake))
+
+#set up some time lengths in seconds for use later
+onetwenty=$((120*60))
+thirty=$((30*60))
+ninty=$((90*60))
+
+#we should stay awake for 30 minutes after we are
+#woken up to allow user to perform an action
+if [ $diff_time -lt $thirty ]
+then
+out_string="--- Wake was less than 30 minutes ago, not sleeping yet!\n"
+fi
+
+#check the PlexWatch log to see when it was updated, and see
+#if we should stay awake, we are allowing 2 hours after after PlexWatch
+#updates to allow something else to happen
+plexwatch_update=`date +%s -r /opt/plexWatch/plexWatch.log`
+plexwatch_diff=$(($current_date-$plexwatch_update))
+if [ $plexwatch_diff -lt  $thirty ]
+then
+out_string=$out_string"--- PlexWatch updated less than 30 minutes ago, no sleeping yet!\n"
+fi
+
+
+#count the number of FTP users, if there are more than two lines
+#then we have a user on FTP, so touch a file to make note of this for later
+if [ `ftpwho | wc -l` -gt 2 ]
+then
+    touch /var/run/ftp_watch
+fi
+
+#check time difference of the last time we found and FTP user
+#if we found one less than 90 minutes ago, make note of it to prevent sleep
+if [ -a /var/run/ftp_watch ]
+then
+    ftp_watch=`date +%s -r /var/run/ftp_watch`
+    ftp_diff=$(($current_date-$ftp_watch))
+    if [ $ftp_diff -lt $ninty ]
+    then
+	out_string=$out_string"--- An FTP transfer was running less than 90 minutes ago, no sleeping yet!\n"
+    fi
+fi
+#check for snapraid running, and make note to prevent sleep
+if [ `pgrep snapraid | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Snapraid is running!\n"
+fi
+
+#check for samba user, and make note to prevent sleep
+if [ `/usr/bin/smbstatus | grep DENY | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Samba lock exists.\n"
+fi
+
+#check for rsync command running, and make note to prevent sleep
+if [ `pgrep rsync | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Process relating to rsync exists.\n"
+fi
+
+#check to make sure nobody is actively watching a video with Plex
+#this is to ensure that we don’t skip over a user watching if the
+#PlexWatch log hasn’t been updated yet.
+if [ `/opt/plexWatch/plexWatch.pl --watching | grep User | wc -l` != "0" ]
+then
+    touch /var/run/plex_transcoder_last_seen
+    out_string=$out_string"--- PlexWatch reports somebody is watching a video.\n"
+fi
+
+#check for lftp command running, and make note to prevent sleep
+if [ `pgrep 'lftp' | wc -l` != "0" ]
+then
+    out_string=$out_string"--- LFTP running.\n"
+fi
+
+#check for unrar command running, and make note to prevent sleep
+if [ `pgrep 'unrar' | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Unrar running.\n"
+fi
+
+#check for filebot running, and make note to prevent sleep
+if [ `pgrep 'filebot' | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Filebot running.\n"
+fi
+
+#check for command running, and make note to prevent sleep
+if [ `pgrep 'youtube-dl' | wc -l` != "0" ]
+then
+    out_string=$out_string"--- youtube-dl running.\n"
+fi
+
+#check for tar command running, and make note to prevent sleep
+#this is used for home directory backups
+if [ `pgrep -x 'tar' | wc -l` != "0" ]
+then
+    out_string=$out_string"--- tar process running.\n"
+fi
+
+### following takes a while
+#get some info on network statistics
+netstat -ute > .netstat
+
+### now use output for various tests:
+#look for an FTP user we may have missed earlier
+if [ `cat .netstat | grep ftp | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Got user on FTP.\n"
+fi
+
+#check for users on VNC
+if [ `cat .netstat | grep :5900 | wc -l` != "0" ]
+then
+    out_string=$out_string"--- Got user on VNC.\n"
+fi
+
+rm .netstat
+
+#check for active SSH sessions
+if [ "`grep sshd:session /var/log/auth.log | tail -1 | awk '{print $8}'`" = "opened" ]
+then
+    out_string=$out_string"--- User hasn't closed ssh connection.\n"
+fi
+
+#check for mouse/keyboard activity
+idletime=xprintidle
+idletime=$(($idletime/1000))
+if [ $idletime -lt $thirty ]
+then
+    out_string=$out_string"--- Someone has used the keyboard/mouse in the past 30 min no sleeping yet!\n"
+fi
+
+#FINISH
+#If we have any data in our output, we’ll echo it to a log as defined in the cron job
+#this can then be used by the other script to check and perform suspend when necessary
+if [[ -n $out_string ]]
+then
+printf "$(date)- suspend check...\n$out_string"
+exit 1
+fi

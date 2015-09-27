@@ -8,9 +8,4 @@ run the install script as root
 ```
 sudo ./install.sh
 ```
-edit the root crontab
-```
-sudo crontab -e
-# paste in the contents of root_crontab at the end.
-```
-enjoy the power savings!
+enjoy!

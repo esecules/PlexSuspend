@@ -1,0 +1,25 @@
+#!/bin/bash
+#set -xv
+
+#get current date in seconds
+current_date=`date +%s`
+
+#get the date of the last report of a do-no-sleep condition
+last_no_sleep_condition=`date +%s -r /var/log/pm-suspend.log`
+
+#calculate the difference in time of the last no sleep condition to now
+diff_time=$(($current_date-$last_no_sleep_condition))
+
+#if we woke up less than a minute ago, just exit
+one_min=$((1*60))
+if [ $diff_time -lt $one_min ]
+then
+exit 0
+fi
+
+#log the current date and time, and note that we are going to sleep!
+log_date=`date +"%m/%d/%Y %H:%M:%S $HOSTNAME"`
+echo $log_date " - " "SUSPEND!!"
+#run the pm-utils sleep command to put server to sleep
+/usr/sbin/pm-suspend
+#echo mem > /sys/power/state
