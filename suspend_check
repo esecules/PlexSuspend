@@ -133,13 +133,17 @@ then
     out_string=$out_string"--- User hasn't closed ssh connection.\n"
 fi
 
-#check for mouse/keyboard activity
-idletime=xprintidle
-idletime=$(($idletime/1000))
-if [ $idletime -lt $thirty ]
-then
-    out_string=$out_string"--- Someone has used the keyboard/mouse in the past 30 min no sleeping yet!\n"
-fi
+##This is not quite ready yet
+##check for mouse/keyboard activity
+#DISPLAY_OLD=$DISPLAY
+#export DISPLAY=:0
+#idletime=$(xprintidle)
+#idletime=$(($idletime/1000))
+#if [ $idletime -lt $thirty ]
+#then
+#    out_string=$out_string"--- Someone has used the keyboard/mouse in the past 30 min ($idletime sec) no sleeping yet!\n"
+#fi
+#export DISPLAY=$DISPLAY_OLD
 
 #FINISH
 #If we have any data in our output, we’ll echo it to a log as defined in the cron job

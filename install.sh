@@ -17,7 +17,7 @@ then
 else
     echo "adding cronjob"
     # Run every 5 minutes
-    echo "*/5 * * * * $INSTALL_PATH/suspend_check >> /var/log/suspend_log.txt 2>&1 && $INSTALL_PATHsuspend_script >> /var/log/suspend_log.txt >/dev/null 2>&1" >> root_cron
+    echo "*/5 * * * * $INSTALL_PATH/suspend_check >> /var/log/suspend_log 2>&1 && $INSTALL_PATH/suspend_script >> /var/log/suspend_log >/dev/null 2>&1" >> root_cron
     crontab root_cron
     rm root_cron
 fi
