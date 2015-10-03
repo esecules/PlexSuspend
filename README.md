@@ -8,4 +8,8 @@ run the install script as root
 ```
 sudo ./install.sh
 ```
+Add this activity monitoring cron job to the crontab of eachuser you want to monitor
+```
+* * * * * export DISPLAY="$(w <USERNAME> | awk '$2 ~ /:[0-9]+/ {print $2}').0"; xprintidle > ~/.useridle
+```
 enjoy!
