@@ -20,5 +20,7 @@ else
     echo "*/5 * * * * $INSTALL_PATH/suspend_check >> /var/log/suspend_log 2>&1 && $INSTALL_PATH/suspend_script >> /var/log/suspend_log >/dev/null 2>&1" >> root_cron
     crontab root_cron
 fi
-  rm root_cron
-  
+
+rm root_cron
+echo "Add this line to every user's crontab you want to monitor for keyboard/mouse activity"
+echo "* * * * * export DISPLAY=\"\$(w <USERNAME> | awk '$2 ~ /:[0-9]+/ {print $2}').0\"; xprintidle > ~/.useridle"

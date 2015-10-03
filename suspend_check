@@ -22,8 +22,9 @@ out_string="--- Wake was less than 30 minutes ago, not sleeping yet!\n"
 fi
 
 #check the PlexWatch log to see when it was updated, and see
-#if we should stay awake, we are allowing 2 hours after after PlexWatch
+#if we should stay awake, we are allowing 30 min after after PlexWatch
 #updates to allow something else to happen
+/opt/plexWatch/plexWatch.pl
 plexwatch_update=`date +%s -r /opt/plexWatch/plexWatch.log`
 plexwatch_diff=$(($current_date-$plexwatch_update))
 if [ $plexwatch_diff -lt  $thirty ]
@@ -135,15 +136,15 @@ fi
 
 ##This is not quite ready yet
 ##check for mouse/keyboard activity
-#DISPLAY_OLD=$DISPLAY
-#export DISPLAY=:0
-#idletime=$(xprintidle)
-#idletime=$(($idletime/1000))
-#if [ $idletime -lt $thirty ]
-#then
-#    out_string=$out_string"--- Someone has used the keyboard/mouse in the past 30 min ($idletime sec) no sleeping yet!\n"
-#fi
-#export DISPLAY=$DISPLAY_OLD
+shopt -s lastpipe
+w | awk '$2 ~ /:[0-9]+/ {print $1}' | while read -r user ; do
+    idletime=$(cat /home/$user/.useridle)
+    idletime=$(($idletime/1000))
+    if [ $idletime -lt $thirty ]
+    then
+	out_string+="--- $user has used the keyboard/mouse in the past ($idletime sec) no sleeping yet!\n"
+    fi
+done
 
 #FINISH
 #If we have any data in our output, we’ll echo it to a log as defined in the cron job
@@ -153,3 +154,4 @@ then
 printf "$(date)- suspend check...\n$out_string"
 exit 1
 fi
+
